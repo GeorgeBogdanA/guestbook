@@ -41,12 +41,6 @@ class CommentCrudController extends AbstractCrudController
 
     public function configureFields(string $pageName): iterable
     {
-        /*return [
-            IdField::new('id'),
-            TextField::new('title'),
-            TextEditorField::new('description'),
-        ];*/
-
         yield AssociationField::new('conference');
         yield TextField::new('author');
         yield EmailField::new('email');
@@ -64,8 +58,6 @@ class CommentCrudController extends AbstractCrudController
 
         if (Crud::PAGE_EDIT === $pageName) {
             yield $createdAt->setFormTypeOption('disabled', true);
-        } else {
-            yield $createdAt;
         }
     }
 }
