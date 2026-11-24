@@ -1,17 +1,44 @@
 <?php
-
+//To run this test from terminal: symfony php bin/phpunit tests/Controller/ConferenceControllerTest.php
 namespace App\Tests\Controller;
 
+use App\Factory\CommentFactory;
+use App\Factory\ConferenceFactory;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Zenstruck\Foundry\Test\Factories;
+use Zenstruck\Foundry\Test\ResetDatabase;
 
 class ConferenceControllerTest extends WebTestCase
 {
-public function testIndex(): void
-{
-$client = static::createClient();
-$client->request('GET', '/');
+    use Factories;
+    use ResetDatabase;
 
-$this->assertResponseIsSuccessful();
-$this->assertSelectorTextContains('h2', 'Give your feedback');
-}
+    public function testIndex(): void
+    {
+        $client = static::createClient();
+        $client->request('GET', '/');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('h2', 'Give your feedback');
+    }
+
+    public function testConferencePage(): void
+    {
+        $client = static::createClient();
+
+        $amsterdam = ConferenceFactory::createOne(['city' => 'Amsterdam', 'year' => '2025', 'isInternational' => true]);
+        ConferenceFactory::createOne(['city' => 'Paris', 'year' => '2026', 'isInternational' => false]);
+        CommentFactory::createOne(['conference' => $amsterdam]);
+
+        $crawler = $client->request('GET', '/');
+
+        $this->assertCount(2, $crawler->filter('h4'));
+
+        $client->clickLink('View');
+
+        $this->assertPageTitleContains('Amsterdam');
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('h2', 'Amsterdam 2025');
+        $this->assertSelectorExists('div:contains("There are 1 comments")');
+    }
 }
