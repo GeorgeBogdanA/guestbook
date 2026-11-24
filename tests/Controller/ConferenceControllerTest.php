@@ -22,12 +22,31 @@ class ConferenceControllerTest extends WebTestCase
         $this->assertSelectorTextContains('h2', 'Give your feedback');
     }
 
+    public function testCommentSubmission(): void
+    {
+        $client = static::createClient();
+
+        $berlin = ConferenceFactory::createOne(['city' => 'Berlin', 'year' => '2021', 'isInternational' => false]);
+        CommentFactory::createOne(['conference' => $berlin]);
+
+        $client->request('GET', '/conference/berlin-2021');
+        $client->submitForm('Submit', [
+            'comment[author]' => 'Fabien',
+            'comment[text]' => 'Some feedback from an automated functional test',
+            'comment[email]' => 'me@automat.ed',
+            'comment[photo]' => dirname(__DIR__, 2).'/public/images/under-construction.gif',
+        ]);
+        $this->assertResponseRedirects();
+        $client->followRedirect();
+        $this->assertSelectorExists('div:contains("There are 2 comments")');
+    }
+
     public function testConferencePage(): void
     {
         $client = static::createClient();
 
-        $amsterdam = ConferenceFactory::createOne(['city' => 'Amsterdam', 'year' => '2025', 'isInternational' => true]);
-        ConferenceFactory::createOne(['city' => 'Paris', 'year' => '2026', 'isInternational' => false]);
+        $amsterdam = ConferenceFactory::createOne(['city' => 'Amsterdam', 'year' => '2019', 'isInternational' => true]);
+        ConferenceFactory::createOne(['city' => 'Paris', 'year' => '2020', 'isInternational' => false]);
         CommentFactory::createOne(['conference' => $amsterdam]);
 
         $crawler = $client->request('GET', '/');
@@ -38,7 +57,7 @@ class ConferenceControllerTest extends WebTestCase
 
         $this->assertPageTitleContains('Amsterdam');
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h2', 'Amsterdam 2025');
+        $this->assertSelectorTextContains('h2', 'Amsterdam 2019');
         $this->assertSelectorExists('div:contains("There are 1 comments")');
     }
 }
