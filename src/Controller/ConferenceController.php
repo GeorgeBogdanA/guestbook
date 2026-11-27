@@ -5,22 +5,27 @@ namespace App\Controller;
 use App\Entity\Comment;
 use App\Entity\Conference;
 use App\Form\CommentType;
+use App\Message\CommentMessage;
 use App\Repository\CommentRepository;
 use App\Repository\ConferenceRepository;
-use App\SpamChecker;
+//use App\SpamChecker;
 use Doctrine\ORM\EntityManagerInterface;
+use Random\RandomException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapQueryParameter;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
+use Symfony\Component\Messenger\Exception\ExceptionInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class ConferenceController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private MessageBusInterface $bus,
     ){
     }
     #[Route('/', name: 'homepage')]
@@ -32,13 +37,17 @@ final class ConferenceController extends AbstractController
         ]);
     }
 
+    /**
+     * @throws RandomException
+     * @throws ExceptionInterface
+     */
     #[RateLimit('comment_submission', methods: ['POST'])]
     #[Route('/conference/{slug:conference}', name: 'conference')]
     public function show(
         Request $request,
         Conference $conference,
         CommentRepository $commentRepository,
-        SpamChecker $spamChecker,
+        //SpamChecker $spamChecker,
         #[Autowire('%photo_dir%')] string $photoDir,
         #[MapQueryParameter(options: ['min_range' => 0])] int $offset = 0,
     ): Response {
@@ -54,6 +63,7 @@ final class ConferenceController extends AbstractController
             }
 
             $this->entityManager->persist($comment);
+            $this->entityManager->flush();
 
             //SPAM CHECK
             $context = [
@@ -62,11 +72,12 @@ final class ConferenceController extends AbstractController
                 'referrer' => $request->headers->get('referer'),
                 'permalink' => $request->getUri(),
             ];
-            if(2 === $spamChecker->getSpamScore($comment, $context)){
-                throw new \RuntimeException('Blatant spam, go away!');
-            }
-
-            $this->entityManager->flush();
+//            if(2 === $spamChecker->getSpamScore($comment, $context)){
+//                throw new \RuntimeException('Blatant spam, go away!');
+//            }
+//
+//            $this->entityManager->flush();
+            $this->bus->dispatch(new CommentMessage($comment->getId(), $context));
 
             return $this->redirectToRoute('conference', ['slug' => $conference->getSlug()]);
         }

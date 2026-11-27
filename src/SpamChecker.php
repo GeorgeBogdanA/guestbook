@@ -42,7 +42,8 @@ class SpamChecker
 
         try {
             $answer = strtolower($this->agent->call($messages)->getContent());
-        } catch (ExceptionInterface) {
+        } catch (ExceptionInterface $e) {
+            error_log($this::class . ' > AI Error: ' . $e->getMessage());
             // when the model cannot answer, let a human moderate the comment
             return 1;
         }
